@@ -1,0 +1,166 @@
+### R Script for replicating analysis of survival and life expectancy in Derkx et al. (2023)
+### R Script created in September 2023 by Inez Derkx
+
+### Import necessary packages
+library(readr)
+library(BaSTA)
+library(paramDemo)
+library(sjPlot)
+
+### Import data files
+basta_input <- read.csv("your/path/to/Derkx_et_al_2023/basta_input.csv", sep = ",", row.names=1, header=TRUE)
+alcohol_consumption <- read.csv("your/path/to/Derkx_et_al_2023/alcohol_consumption.csv", sep = ",", row.names=1, header=TRUE)
+mothers_drinking <- read.csv("your/path/to/Derkx_et_al_2023/mothers_drinking.csv", sep = ",", row.names=1, header=TRUE)
+fathers_drinking <- read.csv("your/path/to/Derkx_et_al_2023/fathers_drinking.csv", sep = ",", row.names=1, header=TRUE)
+parents_drinking <- read.csv("your/path/to/Derkx_et_al_2023/parents_drinking.csv", sep = ",", row.names=1, header=TRUE)
+female_children <- read.csv("your/path/to/Derkx_et_al_2023/female_children.csv", sep = ",", row.names=1, header=TRUE)
+
+### ANALYSIS 1: Age-specific survival and life expectancy estimation
+
+# Check for issues with data
+check <- DataCheck(basta_input, studyStart = 2014, studyEnd = 2023, autofix = rep(1,7), silent = FALSE) #if no, proceed.
+
+## Perform analysis without covariates:
+basta_no_cov <- basta_input[,1:13]
+check <- DataCheck(basta_no_cov, 2014, 2023)
+basta_simple <- BaSTA::basta(basta_no_cov, 
+                             studyStart = 2014, 
+                             studyEnd = 2023,
+                             model="GO", 
+                             shape="bathtub", 
+                             niter=50000,
+                             nsim = 2, 
+                             parallel = TRUE, 
+                             ncpus = 4)
+
+
+## Perform analysis with sex as covariate:
+basta_sex <- BaSTA::basta(object = basta_input, 
+                          studyStart = 2014, 
+                          studyEnd = 2023, 
+                          model="GO", 
+                          shape="bathtub", 
+                          niter=50000,
+                          nsim = 2, 
+                          parallel = TRUE, 
+                          ncpus = 4)
+
+## Table 1: comparative life expectancy 
+
+# Life expectancy at age for Raute females
+theta_F <- basta_sex$coefficients[c("a0.Female", "a1.Female", "c.Female", "b0.Female", "b1.Female"), "Estimate"]
+lifeExp_F <- CalcRemainLifeExp(theta = theta_F, 
+                               x = 0:50, 
+                               model = basta_sex$modelSpecs["model"],
+                               shape = basta_sex$modelSpecs["model"]) 
+
+# Life expectancy at age for Raute Males
+theta_M <- basta_random_bath2$coefficients[c("a0.Male", "a1.Male", "c.Male", "b0.Male", "b1.Male"), "Estimate"]
+lifeExp_M <- CalcRemainLifeExp(theta = theta_M, 
+                               x = 0:50, 
+                               model = basta_sex$modelSpecs["model"],
+                               shape = basta_sex$modelSpecs["model"]) 
+
+
+
+### ANALYSIS 2: Alcohol consumption tests
+
+# Age vs. drinking (binary)
+wilcox.test(age2022 ~ drinker, alcohol_consumption)
+
+# Sex vs. drinking (binary)
+sex_drink <- table(alcohol_consumption$sex, alcohol_consumption$drinker)
+chisq.test(sex_drink)
+
+# Sex vs. drinking frequency (categorical)
+sex_drink_frequency <- table(alcohol_consumption$sex, alcohol_consumption$alcohol_freq)
+chisq.test(sex_drink_frequency)
+
+
+### ANALYSIS 3: Alcohol consumption and offspring survival
+
+# Mother's alcohol consumption and offspring survival
+check <- DataCheck(mothers_drinking, studyStart = 2014, studyEnd = 2023, autofix = rep(1,7), silent = FALSE) 
+basta_mother_drink <- BaSTA::basta(object = mothers_drinking, 
+                                   studyStart = 2014, 
+                                   studyEnd = 2023, 
+                                   niter=50000, 
+                                   model = "GO", 
+                                   shape = "bathtub", 
+                                   nsim = 2, 
+                                   parallel = TRUE, 
+                                   ncpus = 4)
+
+# Father's alcohol consumption and offspring survival
+check <- DataCheck(fathers_drinking, studyStart = 2014, studyEnd = 2023, autofix = rep(1,7), silent = FALSE) 
+basta_father_drink <- BaSTA::basta(object = fathers_drinking, 
+                                   studyStart = 2014, 
+                                   studyEnd = 2023, 
+                                   niter=50000, 
+                                   model = "GO", 
+                                   shape = "bathtub", 
+                                   nsim = 2, 
+                                   parallel = TRUE, 
+                                   ncpus = 4)
+
+# Both parents' alcohol consumption and offspring survival
+check <- DataCheck(parents_drinking, studyStart = 2014, studyEnd = 2023, autofix = rep(1,7), silent = FALSE) 
+basta_parents_drink <- BaSTA::basta(object = parents_drinking, 
+                                   studyStart = 2014, 
+                                   studyEnd = 2023, 
+                                   niter=50000, 
+                                   model = "GO", 
+                                   shape = "bathtub", 
+                                   nsim = 2, 
+                                   parallel = TRUE, 
+                                   ncpus = 4)
+
+
+
+### ANALYSIS 4: Alcohol consumption and female fertility
+
+# Female drinking and number of live children
+childrenAlive <- glm(childAlive ~ age*drinking_frequency, family = poisson, data=female_children)
+plot_model(childrenAlive, type = "int") +
+  theme_minimal() +
+  theme(text = element_text(size = 40),
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black"),
+        panel.background = element_blank(),
+        legend.position = 'top') +
+  labs(x = 'Age', y = "Nr of live of children", title = NULL, colour = "Drinking") +
+  ylim(0,8) +
+  xlim(0,50)
+
+# Female drinking and total number of children
+childrenTotal <- glm(childTotal ~ age*drinking_frequency, family = poisson, data=female_children)
+plot_model(childrenTotal, type = "int") +
+  theme_minimal() +
+  theme(text = element_text(size = 40),
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black"),
+        panel.background = element_blank(),
+        legend.position = 'off') +
+  labs(x = 'Age', y = "Total nr of children", title = NULL, colour = "Drinking") +
+  ylim(0,8) +
+  xlim(0,50)
+
+# Female drinking and proportion of children alive
+childrenBinomial <- glm(formula = cbind(childAlive, childDead) ~ age*drinking_frequency, 
+                family = binomial(logit), data = female_children)
+plot_model(childrenBinomial, type = "int") +
+  theme_minimal() +
+  theme(text = element_text(size = 40),
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black"),
+        panel.background = element_blank(),
+        legend.position = 'off') +
+  labs(x = 'Age', y = "Proportion of children alive", title = NULL, colour = "Drinking") +
+  scale_y_continuous(breaks=seq(0, 1, 0.2)) +
+  xlim(0,50)
