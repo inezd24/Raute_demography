@@ -1,0 +1,39 @@
+### R Script for replicating analysis of survival and life expectancy in Derkx et al. (2023)
+### R Script created in September 2023 by Inez Derkx
+
+### Import necessary packages
+library(readr)
+library(BaSTA)
+library(paramDemo)
+
+### Import data files
+basta_input <- read.csv("your/path/to/file", sep = ",", row.names=1, header=TRUE)
+
+### ANALYSIS 1: Age-specific survival and life expectancy estimation
+
+# Check for issues with data
+check <- DataCheck(basta_input, studyStart = 2014, studyEnd = 2023,
+                   autofix = rep(1,7), silent = FALSE) #if no, proceed.
+
+## Perform analysis without covariates:
+basta_no_cov <- basta_input[,1:13]
+check <- DataCheck(basta_no_cov, 2014, 2023)
+basta_simple <- BaSTA::basta(basta_no_cov, 2014, 2023, model="GO", shape="bathtub", niter=50000,
+                              nsim = 2, parallel = TRUE, ncpus = 4)
+
+
+## Perform analysis with sex as covariate:
+basta_sex <- BaSTA::basta(object = basta_input, studyStart = 2014, studyEnd = 2023, model="GO", shape="bathtub", niter=50000,
+                          nsim = 2, parallel = TRUE, ncpus = 4)
+
+## Table 1: comparative life expectancy 
+
+# Life expectancy at age for Raute females
+theta_F <- basta_sex$coefficients[c("a0.Female", "a1.Female", "c.Female", "b0.Female", "b1.Female"), "Estimate"]
+lifeExp_F <- CalcRemainLifeExp(theta = theta_F, x = 0:50, model = basta_sex$modelSpecs["model"],
+                               shape = basta_sex$modelSpecs["model"]) 
+
+# Life expectancy at age for Raute Males
+theta_M <- basta_random_bath2$coefficients[c("a0.Male", "a1.Male", "c.Male", "b0.Male", "b1.Male"), "Estimate"]
+lifeExp_M <- CalcRemainLifeExp(theta = theta_M, x = 0:50, model = basta_sex$modelSpecs["model"],
+                               shape = basta_sex$modelSpecs["model"]) 
