@@ -1,2 +1,64 @@
 ### Script for replicating analyses in the supplementary material of Derkx et al. (2023)
 ### Script created in September 2023 by Inez Derkx
+
+
+# Replicating analysis 4 with Bayesian generalized linear models
+
+# Proportion of children alive
+binomial_children_bayes <- brm(childAlive | trials(childTotal) ~ age*drinking_frequency,  
+                  data = female_children,
+                  family = binomial(link = "logit"),
+                  warmup = 1000,
+                  iter = 2000,
+                  chains = 2,
+                  init = "0",
+                  cores = 12,
+                  seed = 123)
+post_binomial_children_bayes <- as.matrix(binomial_children_bayes)
+color_scheme_get("red")
+color_scheme_set("red")
+colnames(post_binomial_children_bayes)[1:4] <- c("Intercept", "Age", "Heavy drinking", "Heavy drinking x Age")
+mcmc_areas(post_binomial_children_bayes, 
+           pars = c("Age", "Heavy drinking", "Heavy drinking x Age"),
+           prob = 0.8,
+           prob_outer = 0.95)
+
+
+# Total number of children
+total_children_bayes <- brm(childTotal ~ age*drinking_frequency,  
+                   data = female_children,
+                   family = poisson,
+                   warmup = 1000,
+                   iter = 2000,
+                   chains = 2,
+                   init = "0",
+                   cores = 12,
+                   seed = 123)
+post_total_children_bayes <- as.matrix(total_children_bayes)
+color_scheme_set("red")
+colnames(post_total_children_bayes)[1:4] <- c("Intercept", "Age", "Heavy drinking", "Heavy drinking x Age")
+mcmc_areas(post_total_children_bayes, 
+           pars = c("Age", "Heavy drinking", "Heavy drinking x Age"),
+           prob = 0.8,
+           prob_outer = 0.95)
+
+# Number of children alive
+alive_children_bayes <- brm(childAlive ~ age*drinking_frequency,  
+                   data = female_children,
+                   family = poisson,
+                   warmup = 1000,
+                   iter = 2000,
+                   chains = 2,
+                   init = "0",
+                   cores = 12,
+                   seed = 123)
+post_alive_children_bayes <- as.matrix(alive_children_bayes)
+color_scheme_set("red")
+colnames(post_alive_children_bayes)[1:4] <- c("Intercept", "Age", "Heavy drinking", "Heavy drinking x Age")
+mcmc_areas(post_alive_children_bayes, 
+           pars = c("Age", "Heavy drinking", "Heavy drinking x Age"),
+           prob = 0.8,
+           prob_outer = 0.95)
+
+
+
