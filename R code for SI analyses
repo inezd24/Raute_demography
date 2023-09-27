@@ -61,4 +61,52 @@ mcmc_areas(post_alive_children_bayes,
            prob_outer = 0.95)
 
 
+### Replicating analysis 4 with age-squared factor
+
+# Live children
+fert_alive_sq <- glm(childAlive ~ age_sq*freq_levels2, family = poisson, data=sub_fert)
+plot_model(fert_alive_sq, type = "int") +
+  theme_minimal() +
+  theme(text = element_text(size = 40),
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black"),
+        panel.background = element_blank(),
+        legend.position = 'off') +
+  labs(x = 'Age', y = "Children alive", title = NULL, colour = "Drinking")
+
+
+# Total children
+fert_total_sq <- glm(childTotal ~ age_sq*freq_levels2, family = poisson, data=sub_fert)
+plot_model(fert_total_sq, type = "int") +
+  theme_minimal() +
+  theme(text = element_text(size = 40),
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black"),
+        panel.background = element_blank(),
+        legend.position = 'off') +
+  labs(x = 'Age', y = "Total children", title = NULL, colour = "Drinking") 
+
+# Proportion of children alive
+fert_bin_sq <- glm(cbind(childAlive, childDead) ~ age_sq*freq_levels2, family = binomial(logit), data = sub_fert)
+plot_model(fert_bin_sq, type = "int") +
+  theme_minimal() +
+  theme(text = element_text(size = 40),
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black"),
+        panel.background = element_blank(),
+        legend.position = 'off') +
+  labs(x = 'Age', y = "Proportion of children alive", title = NULL, colour = "Drinking") 
+
+# Summaries of the models
+summary(fert_alive_sq)
+summary(fert_total_sq)
+summary(fert_bin_sq)
+
+
 
